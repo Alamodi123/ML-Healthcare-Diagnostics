@@ -275,7 +275,7 @@ A polished, production-ready web dashboard that loads the pre-trained models and
 
 5. Open your browser at **http://localhost:8501** 🎉
 
-> 🌐 **Or try the live demo:** [ML-Healthcare-Diagnostics on Streamlit Cloud](https://alamodi123-ml-healthcare-diagnostics.streamlit.app)
+> 🌐 **Or try the live demo:** [ML-Healthcare-Diagnostics on Streamlit Cloud](https://ml-healthcare-diagnostics-flndemsjreipr4znywjg4f.streamlit.app)
 
 ### Re-running the Notebooks
 
