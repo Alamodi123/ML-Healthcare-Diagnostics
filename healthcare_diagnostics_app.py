@@ -302,14 +302,16 @@ elif page == "❤️ Heart Patient Segmentation":
     with st.expander("📖 How does this model work?"):
         st.markdown(
             """
-            **Pipeline:** StandardScaler → PCA → K-Means
+            **Pipeline:** StandardScaler → Feature Selection → K-Means
 
-            1. **Scaling** — Raw patient features are standardised to zero mean and unit
-               variance so that no single feature dominates distance calculations.
-            2. **PCA (Principal Component Analysis)** — Dimensionality is reduced while
-               retaining the maximum variance in the data.
-            3. **K-Means Clustering** — Patients are grouped into distinct clusters based
-               on their transformed cardiovascular profile.
+            1. **Scaling** — Five numeric features (age, trestbps, chol, thalach, oldpeak)
+               are standardised to zero mean and unit variance.
+            2. **One-Hot Encoding** — Categorical features (cp, slope, thal) are converted
+               to binary dummy variables.
+            3. **Feature Selection** — The top 10 most discriminative features (selected
+               via ANOVA F-test during training) are used for clustering.
+            4. **K-Means Clustering** — Patients are grouped into 3 distinct clusters based
+               on their cardiovascular profile.
 
             The model was trained on the **UCI Heart Disease** dataset.
             """
@@ -403,20 +405,43 @@ elif page == "❤️ Heart Patient Segmentation":
 
     # ── Prediction ──────────────────────────────────────────────────────────
     if segment_btn:
-        raw_input = np.array(
-            [[age_h, sex_h, cp_h, trestbps_h, chol_h, fbs_h,
-              restecg_h, thalach_h, exang_h, oldpeak_h, slope_h, ca_h, thal_h]]
-        )
-
         with st.spinner("Processing cardiovascular profile …"):
             time.sleep(0.6)
             try:
-                # Step 1 — Scale
-                scaled_input = scaler.transform(raw_input)
-                # Step 2 — PCA
-                pca_input = pca.transform(scaled_input)
-                # Step 3 — K-Means
-                cluster = int(kmeans.predict(pca_input)[0])
+                # Step 1 — Scale only the 5 numeric features the scaler was trained on
+                import pandas as pd
+
+                numeric_raw = np.array([[age_h, trestbps_h, chol_h, thalach_h, oldpeak_h]])
+                numeric_scaled = scaler.transform(numeric_raw)
+                # Extract scaled values
+                age_sc, trestbps_sc, chol_sc, thalach_sc, oldpeak_sc = numeric_scaled[0]
+
+                # Step 2 — One-hot encode categoricals (drop_first=True, matching training)
+                # cp: 0,1,2,3 → cp_1, cp_2, cp_3 (drop cp_0)
+                cp_1 = 1 if cp_h == 1 else 0
+                cp_2 = 1 if cp_h == 2 else 0
+                cp_3 = 1 if cp_h == 3 else 0
+
+                # slope: 0,1,2 → slope_1, slope_2 (drop slope_0)
+                slope_1 = 1 if slope_h == 1 else 0
+                slope_2 = 1 if slope_h == 2 else 0
+
+                # thal: 0,1,2,3 → thal_1, thal_2, thal_3 (drop thal_0)
+                thal_1 = 1 if thal_h == 1 else 0
+                thal_2 = 1 if thal_h == 2 else 0
+                thal_3 = 1 if thal_h == 3 else 0
+
+                # Step 3 — Select the exact 10 features the model was trained on
+                # (determined by SelectKBest during training)
+                selected_input = pd.DataFrame(
+                    [[sex_h, thalach_sc, exang_h, oldpeak_sc, ca_h,
+                      cp_2, slope_1, slope_2, thal_2, thal_3]],
+                    columns=['sex', 'thalach', 'exang', 'oldpeak', 'ca',
+                             'cp_2', 'slope_1', 'slope_2', 'thal_2', 'thal_3']
+                )
+
+                # Step 4 — Predict cluster directly (KMeans was trained on these 10 features)
+                cluster = int(kmeans.predict(selected_input)[0])
             except Exception as exc:
                 st.error(
                     "❌ **Processing error** — the input dimensions may not match the "
@@ -494,11 +519,15 @@ elif page == "❤️ Heart Patient Segmentation":
 
         # Show input summary
         with st.expander("📋 View submitted patient data"):
+            raw_values = [
+                age_h, sex_h, cp_h, trestbps_h, chol_h, fbs_h,
+                restecg_h, thalach_h, exang_h, oldpeak_h, slope_h, ca_h, thal_h,
+            ]
             feature_names = [
                 "Age", "Sex", "Chest Pain Type", "Resting BP", "Cholesterol",
                 "Fasting BS > 120", "Resting ECG", "Max Heart Rate",
                 "Exercise Angina", "ST Depression", "Slope", "Major Vessels",
                 "Thalassemia",
             ]
-            for name, val in zip(feature_names, raw_input[0]):
+            for name, val in zip(feature_names, raw_values):
                 st.write(f"- **{name}:** {val}")
