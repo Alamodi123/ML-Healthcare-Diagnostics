@@ -4,7 +4,7 @@
 
 <h1 align="center">🏥 ML-Healthcare-Diagnostics</h1>
 
-<p align="center">
+<p align="center"> 
   <em>End-to-end Machine Learning project — from raw data exploration to a production-ready interactive dashboard — for early-stage healthcare screening.</em>
 </p>
 
